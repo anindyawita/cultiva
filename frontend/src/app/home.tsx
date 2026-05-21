@@ -54,7 +54,7 @@ export default function HomeDashboard() {
       </AnimatePresence>
 
       {/* Persistent Bottom Nav */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      <BottomNav />
     </div>
   );
 }

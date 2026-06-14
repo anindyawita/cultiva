@@ -229,6 +229,10 @@ async def crop_recommendation_endpoint(body: CropRecommendationRequest):
             phosphorus=body.phosphorus,
             potassium=body.potassium,
             temperature=body.temperature,
+            humidity=body.humidity,
+            ph=body.ph,
+            soil_type=body.soil_type,
+            season=body.season,
             location=body.location,
             rainfall_mm=body.rainfall_mm,
         )

@@ -13,6 +13,12 @@ All services are stateless functions — dependency injection happens at the API
 import json
 import logging
 import re
+import pandas as pd
+import joblib
+from sklearn.preprocessing import LabelEncoder
+
+import os
+
 from datetime import datetime, timedelta, date
 from typing import Optional
 
@@ -420,60 +426,133 @@ def harvest_service(
 # Feature 6 — Crop Recommendation
 # ─────────────────────────────────────────────────────────────────────────────
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "model_crop_recommendation.pkl")
+LE_PATH = os.path.join(BASE_DIR, "models", "label_encoder.pkl")
+
+_ml_model = None
+
+def _load_crop_model():
+    global _ml_model
+    if _ml_model is None:
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"File model tidak ditemukan di: {MODEL_PATH}")
+        _ml_model = joblib.load(MODEL_PATH)
+    return _ml_model
+
+_label_encoder = None
+
+def _load_label_encoder():
+    global _label_encoder
+    if _label_encoder is None:
+        if not os.path.exists(LE_PATH):
+            raise FileNotFoundError(f"File label encoder tidak ditemukan di: {LE_PATH}")
+        _label_encoder = joblib.load(LE_PATH)
+    return _label_encoder
+
 def crop_recommendation_service(
-    nitrogen: float,
-    phosphorus: float,
-    potassium: float,
-    temperature: float,
-    location: str,
-    rainfall_mm: Optional[float] = None,
+        nitrogen: float,
+        phosphorus: float,
+        potassium: float,
+        temperature: float,
+        humidity: float,
+        ph: float,
+        soil_type: str,
+        season: str,
+        location: str,
+        rainfall_mm: Optional[float] = None,
 ) -> dict:
-    """Rank top 5 crops suitable for the given soil + weather conditions."""
+    
+    model = _load_crop_model()
 
-    pipeline = get_pipeline()
-    weather_svc = get_weather()
+    label_encoder = _load_label_encoder()
 
-    current_weather = weather_svc.get_current_weather(location)
-    rainfall = rainfall_mm or current_weather.get("rainfall_mm", 0.0)
+    input_data = {
+        'soil_type': [soil_type],
+        'season': [season],
+        'pH': [ph],             
+        'temperature': [temperature],
+        'humidity': [humidity],
+        'n': [nitrogen],         
+        'p': [phosphorus],        
+        'k': [potassium]
+    }
 
-    context = pipeline.retrieve_context(
-        "general", "crop_recommendation",
-        extra_query=f"best crops {location} NPK {nitrogen} {phosphorus} {potassium}"
-    )
+    df_input = pd.DataFrame(input_data)
 
-    system_prompt = (
-        "Kamu adalah pakar agronomi rekomendasi tanaman. "
-        "Berdasarkan parameter tanah (NPK), suhu, curah hujan, dan lokasi, "
-        "rekomendasikan 5 tanaman terbaik yang paling cocok untuk kondisi tersebut. "
-        "Berikan skor kesesuaian 0-100 dengan penjelasan ilmiah."
-    )
+    prediction = model.predict(df_input)
 
-    user_prompt = (
-        f"Lokasi: {location}\n"
-        f"NPK tanah: N={nitrogen}, P={phosphorus}, K={potassium}\n"
-        f"Suhu: {temperature}°C\n"
-        f"Kelembaban: {current_weather['humidity_pct']}%\n"
-        f"Curah hujan: {rainfall} mm\n\n"
-        "Rekomendasikan 5 tanaman terbaik dalam format JSON:\n"
-        '{"top_recommendations": ['
-        '{"crop": "...", "suitability_score": number, "reason": "...", '
-        '"expected_yield": "...", "harvest_days": "..."}], '
-        '"environmental_summary": "...", "ai_reasoning": "..."}'
-    )
-
-    llm_response = pipeline.generate_recommendation(system_prompt, user_prompt, context)
-    parsed = _safe_parse_json(llm_response, {})
+    crop_name = label_encoder.inverse_transform(prediction)[0]
 
     return {
+        "recommended_crop" : crop_name,
         "input_params": {
-            "N": nitrogen, "P": phosphorus, "K": potassium,
-            "temperature": temperature, "location": location,
-            "rainfall_mm": rainfall,
+            "soil_type": soil_type,
+            "season": season,
+            "pH": ph,
+            "temperature": temperature,
+            "humidity": humidity,
+            "n": nitrogen,
+            "p": phosphorus,
+            "k": potassium
         },
-        "top_recommendations": parsed.get("top_recommendations", []),
-        "environmental_summary": parsed.get("environmental_summary", ""),
-        "ai_reasoning": parsed.get("ai_reasoning", llm_response),
+        "message": "Prediksi sukses diproses"
     }
+
+# def crop_recommendation_service(
+#     nitrogen: float,
+#     phosphorus: float,
+#     potassium: float,
+#     temperature: float,
+#     location: str,
+#     rainfall_mm: Optional[float] = None,
+# ) -> dict:
+#     """Rank top 5 crops suitable for the given soil + weather conditions."""
+
+#     pipeline = get_pipeline()
+#     weather_svc = get_weather()
+
+#     current_weather = weather_svc.get_current_weather(location)
+#     rainfall = rainfall_mm or current_weather.get("rainfall_mm", 0.0)
+
+#     context = pipeline.retrieve_context(
+#         "general", "crop_recommendation",
+#         extra_query=f"best crops {location} NPK {nitrogen} {phosphorus} {potassium}"
+#     )
+
+#     system_prompt = (
+#         "Kamu adalah pakar agronomi rekomendasi tanaman. "
+#         "Berdasarkan parameter tanah (NPK), suhu, curah hujan, dan lokasi, "
+#         "rekomendasikan 5 tanaman terbaik yang paling cocok untuk kondisi tersebut. "
+#         "Berikan skor kesesuaian 0-100 dengan penjelasan ilmiah."
+#     )
+
+#     user_prompt = (
+#         f"Lokasi: {location}\n"
+#         f"NPK tanah: N={nitrogen}, P={phosphorus}, K={potassium}\n"
+#         f"Suhu: {temperature}°C\n"
+#         f"Kelembaban: {current_weather['humidity_pct']}%\n"
+#         f"Curah hujan: {rainfall} mm\n\n"
+#         "Rekomendasikan 5 tanaman terbaik dalam format JSON:\n"
+#         '{"top_recommendations": ['
+#         '{"crop": "...", "suitability_score": number, "reason": "...", '
+#         '"expected_yield": "...", "harvest_days": "..."}], '
+#         '"environmental_summary": "...", "ai_reasoning": "..."}'
+#     )
+
+#     llm_response = pipeline.generate_recommendation(system_prompt, user_prompt, context)
+#     parsed = _safe_parse_json(llm_response, {})
+
+#     return {
+#         "input_params": {
+#             "N": nitrogen, "P": phosphorus, "K": potassium,
+#             "temperature": temperature, "location": location,
+#             "rainfall_mm": rainfall,
+#         },
+#         "top_recommendations": parsed.get("top_recommendations", []),
+#         "environmental_summary": parsed.get("environmental_summary", ""),
+#         "ai_reasoning": parsed.get("ai_reasoning", llm_response),
+#     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

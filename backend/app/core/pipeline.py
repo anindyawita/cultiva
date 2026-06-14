@@ -169,11 +169,12 @@ class CultivaRAGPipeline:
         full_system = (
             f"{system_prompt}\n\n"
             "=== RETRIEVED AGRICULTURAL KNOWLEDGE ===\n"
-            f"{context if context else 'No specific context retrieved — use general agricultural knowledge.'}\n"
+            f"{context if context else 'No specific context retrieved. Please rely on your own extensive agricultural and agronomy knowledge to answer.'}\n"
             "=== END OF CONTEXT ===\n\n"
-            "Instructions: Always base your recommendations on the retrieved context above "
-            "and the provided farm data. Respond in Bahasa Indonesia when the user's input "
-            "is in Bahasa Indonesia, otherwise respond in English. "
+            "Instructions: Base your recommendations on the retrieved context above if available. "
+            "If the context is missing, incomplete, or not relevant, use your own extensive general "
+            "agricultural knowledge to provide a helpful, accurate, and detailed answer. "
+            "Respond in Bahasa Indonesia when the user's input is in Bahasa Indonesia, otherwise respond in English. "
             "Be specific, actionable, and explain your reasoning."
         )
 

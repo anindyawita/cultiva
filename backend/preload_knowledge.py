@@ -45,34 +45,54 @@ CROPS = [
     "Kedelai",
 ]
 
-# ── Query templates per fitur ─────────────────────────────────────────────────
-# {crop} akan diganti nama tanaman
+CROP_TRANSLATIONS = {
+    "Padi": "Rice",
+    "Jagung": "Maize",
+    "Tebu": "Sugarcane",
+    "Kapas": "Cotton",
+    "Cabe Rawit": "Cayenne pepper",
+    "Terung": "Eggplant",
+    "Ketimun": "Cucumber",
+    "Paprika": "Bell pepper",
+    "Kacang Panjang": "Yardlong bean",
+    "Ubi Kayu": "Cassava",
+    "Semangka": "Watermelon",
+    "Melon": "Melon",
+    "Kembang Kol": "Cauliflower",
+    "Bawang Merah": "Shallot",
+    "Kacang Tanah": "Groundnut",
+    "Kedelai": "Soybean",
+}
+
+# ── Query templates per fitur (English) ───────────────────────────────────────
+# {crop} akan diganti nama tanaman versi bahasa Inggris
 FEATURE_QUERIES = {
+    "irrigation": [
+        "{crop} (irrigation OR 'water requirement' OR 'watering schedule')",
+        "{crop} (evapotranspiration OR 'water stress' OR 'soil moisture')",
+    ],
     "fertilizer": [
-        "{crop} kebutuhan pupuk NPK Indonesia",
-        "{crop} dosis pemupukan per hektar fase pertumbuhan",
-        "{crop} defisiensi nitrogen fosfor kalium gejala",
+        "{crop} NPK fertilizer requirements",
+        "{crop} fertilizer application dosage",
     ],
     "monitoring": [
-        "{crop} hama penyakit utama Indonesia",
-        "{crop} pencegahan pengendalian hama organisme pengganggu tanaman",
-        "{crop} gejala penyakit jamur bakteri virus tanaman",
+        "{crop} pest disease control",
+        "{crop} crop disease symptoms",
     ],
     "harvest": [
-        "{crop} umur panen hari setelah tanam Indonesia",
-        "{crop} hasil panen ton per hektar optimal",
-        "{crop} tanda tanda siap panen indikator",
+        "{crop} harvest time maturity",
+        "{crop} harvesting optimal yield",
     ],
     "farm_health": [
-        "{crop} kondisi tanah optimal pH NPK",
-        "{crop} gejala tanaman tidak sehat kerdil kuning layu",
-        "{crop} suhu kelembaban optimal pertumbuhan",
+        "{crop} optimal soil pH temperature",
+        "{crop} crop health issues",
     ],
     "chatbot": [
-        "{crop} budidaya lengkap panduan pertanian Indonesia",
-        "{crop} tips perawatan produktivitas tinggi",
+        "{crop} cultivation guide tips",
+        "{crop} farming best practices",
     ],
 }
+
 
 
 def preload_crop(crop: str, feature: str, scraper, embedder, force: bool) -> int:
@@ -83,16 +103,18 @@ def preload_crop(crop: str, feature: str, scraper, embedder, force: bool) -> int
     # Cek apakah sudah ada data
     if not force:
         existing = embedder.count_chunks_for_crop(crop)
-        if existing >= 10:
+        if existing >= 10:  # Restored to 10 since we only have English queries now
             logger.info("  SKIP — %s sudah punya %d chunks di ChromaDB", crop, existing)
             return 0
 
     queries = FEATURE_QUERIES.get(feature, [])
+    crop_en = CROP_TRANSLATIONS.get(crop, crop)
     total_stored = 0
 
+    # Run English Queries
     for template in queries:
-        query = template.replace("{crop}", crop)
-        logger.info("  Scraping: %s", query)
+        query = template.replace("{crop}", crop_en)
+        logger.info("  Scraping (EN): %s", query)
 
         try:
             docs = scraper.search_and_scrape(query, max_results=3)

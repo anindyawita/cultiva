@@ -125,7 +125,7 @@ def irrigation_service(
         f"Tanaman: {crop_type}\n"
         f"Lokasi: {location}\n"
         f"NPK saat ini: N={nitrogen}, P={phosphorus}, K={potassium}\n"
-        f"Suhu saat ini: {current_weather['temp_celsius']}°C, "
+        f"Suhu saat ini: {current_weather['temp_celsius']}°C, " 
         f"Kelembaban: {current_weather['humidity_pct']}%\n"
         f"Curah hujan saat ini: {current_weather['rainfall_mm']} mm\n"
         f"ET₀ estimasi: {et0} mm/hari\n"

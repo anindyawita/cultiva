@@ -1,8 +1,32 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ==========================================
+# CULTIVA WEB - CONFIGURATION
+# ==========================================
 
-# dependencies
-/node_modules
-/.pnp
+# --- Python & FastAPI (Backend) ---
+# Mengabaikan virtual environment di folder mana pun
+.venv/
+venv/
+ENV/
+env/
+
+# Mengabaikan cache python (.pyc, __pycache__)
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# --- Node.js & Next.js (Frontend) ---
+# Menghapus tanda '/' di depan agar mendeteksi di dalam subfolder frontend
+node_modules/
+.next/
+out/
+build/
+coverage/
+
+# Yarn (jika pakai)
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,32 +34,27 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# --- Logs & Debugging ---
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+pip-log.txt
 
-# env files (can opt-in for committing if needed)
-.env*
+# --- Environment & Security ---
+# Mengabaikan semua file .env agar data kredensial tidak bocor ke github
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
 
-# vercel
+# --- Sistem Operasi ---
+.DS_Store
+Thumbs.db
+
+# --- Vercel & TypeScript ---
 .vercel
-
-# typescript
 *.tsbuildinfo
 next-env.d.ts

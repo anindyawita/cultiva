@@ -8,6 +8,7 @@ import {
   Globe, MessageSquare, Mail, Send, Activity, Droplets, Thermometer
 } from 'lucide-react';
 import './landingpage.css';
+import SoilDashboard from "@/components/tabs/SoilDashboard";
 
 // Simple and foolproof fade up animation moved outside to prevent remounting
 const FadeUp = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => (
@@ -445,6 +446,19 @@ export default function CultivaLanding({ onGetStarted }: { onGetStarted?: () => 
             Get Started Now <ArrowRight size={20} />
           </button>
         </motion.div>
+      </section>
+
+      {/* Soil Monitoring Dashboard */}
+      <section className="section-container">
+        <div className="section-header">
+          <span className="section-label">IoT Monitoring</span>
+          <h2 className="section-title">Real-Time Soil Monitoring</h2>
+          <p className="section-subtitle">
+            Monitor soil moisture and temperature directly from field sensors.
+          </p>
+        </div>
+
+        <SoilDashboard />
       </section>
 
       {/* Footer */}

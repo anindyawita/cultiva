@@ -7,6 +7,7 @@ import BottomNav from '../../components/BottomNav';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import SoilDashboard from '@/components/tabs/SoilDashboard';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -48,6 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </motion.div>
       </AnimatePresence>
+      <SoilDashboard />
 
       {/* Persistent Bottom Nav */}
       <BottomNav />

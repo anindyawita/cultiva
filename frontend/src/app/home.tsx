@@ -11,8 +11,9 @@ import PredictTab from '../components/tabs/PredictTab';
 import MonitorTab from '../components/tabs/MonitorTab';
 import ChatbotTab from '../components/tabs/ChatbotTab';
 import ProfileTab from '../components/tabs/ProfileTab';
+import SoilDashboard from '../components/tabs/SoilDashboard';
 
-type Tab = 'home' | 'predict' | 'monitor' | 'chatbot' | 'profile';
+type Tab = 'home' | 'predict' | 'monitor' | 'chatbot' | 'profile' | 'soil';
 
 export default function HomeDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -24,6 +25,7 @@ export default function HomeDashboard() {
       case 'monitor': return <MonitorTab key="monitor" />;
       case 'chatbot': return <ChatbotTab key="chatbot" />;
       case 'profile': return <ProfileTab key="profile" />;
+      case 'soil': return <SoilDashboard key="soil" />;
       default: return <HomeTab key="home" />;
     }
   };
@@ -52,6 +54,7 @@ export default function HomeDashboard() {
           {renderTabContent()}
         </motion.div>
       </AnimatePresence>
+      <SoilDashboard />
 
       {/* Persistent Bottom Nav */}
       <BottomNav />

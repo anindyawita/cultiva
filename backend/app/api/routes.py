@@ -220,7 +220,7 @@ async def harvest_endpoint(body: HarvestRequest):
 @router.post("/crop-recommendation/", summary="AI Crop Recommendation")
 async def crop_recommendation_endpoint(body: CropRecommendationRequest):
     """
-    Rank top 5 most suitable crops for the given soil NPK, temperature,
+    Most suitable crops for the given soil NPK, temperature,
     rainfall, and location parameters.
     """
     try:

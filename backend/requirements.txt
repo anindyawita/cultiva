@@ -1,3 +1,9 @@
 fastapi
 uvicorn[standard]
 python-dotenv
+joblib
+scikit-learn
+pandas
+pydantic-settings
+sentence_transformers
+chromadb

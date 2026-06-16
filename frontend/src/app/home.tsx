@@ -52,10 +52,6 @@ export default function HomeDashboard() {
           style={{ width: '100%' }}
         >
           {renderTabContent()}
-        </motion.div>
-      </AnimatePresence>
-      <SoilDashboard />
-
       {/* Persistent Bottom Nav */}
       <BottomNav />
     </div>

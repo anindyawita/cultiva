@@ -2,6 +2,16 @@
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --neon-green: #39FF14;
+  --neon-green-glow: rgba(57, 255, 20, 0.5);
+  --neon-green-dim: rgba(57, 255, 20, 0.15);
+  --dark-bg: #050505;
+  --dark-surface: #111111;
+  --dark-surface-glass: rgba(10, 15, 10, 0.65);
+  --text-main: #FFFFFF;
+  --text-muted: #A0A0A0;
+  --border-glass: rgba(57, 255, 20, 0.15);
+  --border-bright: rgba(57, 255, 20, 0.4);
 }
 
 html, body {

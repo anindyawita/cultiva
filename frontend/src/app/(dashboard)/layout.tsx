@@ -49,7 +49,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </motion.div>
       </AnimatePresence>
-      <SoilDashboard />
 
       {/* Persistent Bottom Nav */}
       <BottomNav />

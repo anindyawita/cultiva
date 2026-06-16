@@ -39,7 +39,7 @@ export default function PredictTab() {
             </FadeUp>
 
             <FadeUp delay={0.2}>
-              <div className="glass-card p-6" style={{ borderRadius: '32px', background: '#111' }}>
+              <div className="glass-card" style={{ padding: '2rem', borderRadius: '32px', background: '#111' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                   <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Environmental<br/>Parameters</h2>
                   <div className="iot-badge"><span className="iot-dot"></span> USE IOT</div>

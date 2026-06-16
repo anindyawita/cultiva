@@ -54,10 +54,7 @@ class FertilizerRequest(BaseModel):
     class Config:
         populate_by_name = True
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Feature 3 — AI Chatbot
-# ─────────────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)

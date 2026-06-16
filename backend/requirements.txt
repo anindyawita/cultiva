@@ -7,3 +7,7 @@ pandas
 pydantic-settings
 sentence_transformers
 chromadb
+requests
+beautifulsoup4
+newspaper4k
+openai

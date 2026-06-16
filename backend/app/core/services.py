@@ -50,14 +50,21 @@ def get_weather() -> WeatherService:
 # Utility
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _safe_parse_json(text: str, fallback: dict) -> dict:
-    """Try to extract the first JSON object from *text*, else return *fallback*."""
-    match = re.search(r"\{[\s\S]*\}", text)
+def _safe_parse_json(text: str, fallback: dict, required_keys: list[str] = None) -> dict:
+    """Extract dan validasi JSON dari LLM output. Strip markdown fences, log jika fallback."""
+    cleaned = re.sub(r"```(?:json)?\s*", "", text).strip().rstrip("`").strip()
+    match = re.search(r"\{[\s\S]*\}", cleaned)
     if match:
         try:
-            return json.loads(match.group())
-        except json.JSONDecodeError:
-            pass
+            parsed = json.loads(match.group())
+            if required_keys:
+                missing = [k for k in required_keys if k not in parsed]
+                if missing:
+                    logger.warning(f"LLM JSON missing keys: {missing}")
+            return parsed
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parse error: {e} | preview: {text[:300]}")
+    logger.warning(f"_safe_parse_json fallback used | preview: {text[:200]}")
     return fallback
 
 
@@ -136,10 +143,11 @@ def irrigation_service(
         f"Curah hujan saat ini: {current_weather['rainfall_mm']} mm\n"
         f"ET₀ estimasi: {et0} mm/hari\n"
         f"Prakiraan 7 hari:\n{forecast_str}\n\n"
-        "Buat jadwal irigasi dalam format JSON:\n"
+        "Buat jadwal irigasi dalam format JSON bahasa Indonesia:\n"
         '{"water_stress_level": "low|medium|high", '
-        '"weekly_schedule": [{"day": "...", "action": "Irrigate|Skip", '
-        '"amount_mm": number_or_null, "reason": "..."}], '
+        '"weekly_schedule": [{"day": "Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu", "action": "Irrigate|Skip", '
+        '"time": "HH:MM AM/PM", "flow_rate_l_min": number_or_null, '
+        '"amount_mm": number_or_null, "reason": "Detail teknis, contoh: Optimal flow: 2.4L/min untuk penyerapan nutrisi."}], '
         '"ai_reasoning": "..."}'
     )
 
@@ -195,11 +203,12 @@ def fertilizer_service(
         f"NPK saat ini: N={nitrogen}, P={phosphorus}, K={potassium}\n"
         f"Suhu: {temperature}°C, Kelembaban: {current_weather['humidity_pct']}%\n"
         f"Lokasi: {location}\n\n"
-        "Berikan rekomendasi pupuk dalam format JSON:\n"
+        "Berikan rekomendasi pupuk dalam format JSON bahasa Indonesia:\n"
         '{"npk_analysis": {"nitrogen_status": "deficient|optimal|excess", '
-        '"phosphorus_status": "...", "potassium_status": "..."}, '
-        '"recommendation": {"fertilizer": "...", "dosage_kg_per_ha": number, '
-        '"timing": "...", "method": "..."}, '
+        '"phosphorus_status": "deficient|optimal|excess", "potassium_status": "deficient|optimal|excess"}, '
+        '"recommendation": {"fertilizer": "Nama pupuk (contoh: NPK 15-15-15, NPK 10-10-10)", "dosage_kg_per_ha": number, '
+        '"timing": "Waktu pemupukan (contoh: 10:30 AM)", "method": "Metode aplikasi (contoh: Injecting mixture, kocor, tebar)", '
+        '"description": "Deskripsi premium satu kalimat tentang kecocokan formula untuk fase tanaman saat ini (contoh: Formula nutrisi seimbang premium dioptimalkan untuk pertumbuhan vegetatif puncak pada profil tanah Anda)"}, '
         '"warnings": ["..."], "ai_reasoning": "..."}'
     )
 
@@ -290,6 +299,47 @@ def _generate_follow_ups(crop_type: Optional[str]) -> list[str]:
     return base[:3]
 
 
+def _normalize_enum(value: str, valid_options: list[str], default: str) -> str:
+    """Normalize LLM enum outputs — handle casing, extra whitespace, typos ringan."""
+    if not value:
+        return default
+    value_clean = str(value).strip().lower()
+    for option in valid_options:
+        if option.lower() == value_clean:
+            return option
+    for option in valid_options:
+        if option.lower() in value_clean:
+            return option
+    logger.warning(f"_normalize_enum: cannot map '{value}' to {valid_options}, fallback to '{default}'")
+    return default
+
+
+def _safe_int(value, default: int = 0, min_val: int = 0, max_val: int = 100) -> int:
+    """Safely convert LLM numeric output ke int, clamp ke range."""
+    try:
+        return max(min_val, min(max_val, int(float(str(value)))))
+    except (ValueError, TypeError):
+        return default
+
+
+def _validate_milestones(raw: list) -> list[dict]:
+    """Validasi dan normalisasi milestone list dari LLM output."""
+    VALID_STATUSES = {"completed", "pending", "future"}
+    result = []
+    for item in (raw or []):
+        if not isinstance(item, dict):
+            continue
+        status = str(item.get("status", "future")).strip().lower()
+        if status not in VALID_STATUSES:
+            status = "future"
+        result.append({
+            "title": str(item.get("title", "Task")).strip(),
+            "status": status,
+            "time_offset": str(item.get("time_offset", "Projected")).strip()
+        })
+    return result
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Feature 4 — Monitoring Scheduling
 # ─────────────────────────────────────────────────────────────────────────────
@@ -323,7 +373,12 @@ def monitoring_service(
         "Kamu adalah pakar perlindungan tanaman dan monitoring pertanian. "
         "Buat jadwal monitoring penyakit dan hama berdasarkan fase pertumbuhan, "
         "kondisi cuaca (terutama kelembaban), dan risiko spesifik tanaman. "
-        "Rekomendasikan tindakan preventif yang konkret dan terukur."
+        "Rekomendasikan tindakan preventif yang konkret dan terukur.\n\n"
+        "PENTING: Respons kamu HARUS berupa satu JSON object yang valid dan TIDAK ADA teks lain "
+        "sebelum atau sesudah JSON. Tidak ada penjelasan, tidak ada markdown, tidak ada komentar. "
+        "Semua angka harus bertipe number (bukan string). "
+        "Semua enum field HARUS persis salah satu dari pilihan yang diberikan, case-sensitive. "
+        "Jangan tambahkan field di luar yang diminta."
     )
 
     forecast_summary = [
@@ -340,24 +395,70 @@ def monitoring_service(
         f"NPK: N={nitrogen}, P={phosphorus}, K={potassium}\n"
         f"Suhu: {temperature}°C, Kelembaban: {current_weather['humidity_pct']}%\n"
         f"Prakiraan cuaca:\n" + "\n".join(forecast_summary) + "\n\n"
-        "Buat jadwal monitoring dalam format JSON:\n"
-        '{"risk_level": "low|medium|high", '
-        '"monitoring_schedule": [{"day": "YYYY-MM-DD", "check_for": ["..."], '
-        '"reason": "...", "action": "..."}], '
-        '"preventive_recommendation": "...", "ai_reasoning": "..."}'
+        "Hasilkan HANYA JSON object berikut (ikuti tipe data dan constraint dengan TEPAT, tidak ada field tambahan):\n"
+        "{\n"
+        '  "risk_level": "<WAJIB salah satu: low | medium | high>",\n'
+        '  "overall_health_score": <integer 0-100, bukan string>,\n'
+        '  "crop_health_score": <integer 0-100, bukan string>,\n'
+        '  "days_to_harvest": <integer positif, bukan string>,\n'
+        '  "ph_status": "<WAJIB salah satu: Optimum | Deficient | Excess>",\n'
+        '  "moisture_status": "<WAJIB salah satu: Optimum | Deficient | Excess>",\n'
+        '  "npk_status": "<WAJIB salah satu: Optimum | Deficient | Excess>",\n'
+        '  "prediction_summary": "<1 kalimat bahasa Indonesia, MAKSIMAL 100 karakter, contoh: Panen tepat waktu karena kelembaban optimal dan siklus nutrisi konsisten 72 jam terakhir>",\n'
+        '  "system_milestones": [\n'
+        '    {"title": "Weekly Water Irrigation", "status": "<WAJIB: completed | pending | future>", "time_offset": "<contoh: Completed | Scheduled • In 2h | Projected • In 12 days>"},\n'
+        '    {"title": "Nutrient Cycle Flush", "status": "<WAJIB: completed | pending | future>", "time_offset": "<contoh: Completed | Scheduled • In 2h | Projected • In 12 days>"},\n'
+        '    {"title": "Predicted Harvest", "status": "<WAJIB: completed | pending | future>", "time_offset": "<contoh: Completed | Scheduled • In 2h | Projected • In 12 days>"}\n'
+        '  ],\n'
+        '  "monitoring_schedule": [\n'
+        '    {"day": "<YYYY-MM-DD>", "check_for": ["<maks 3 item string>"], "reason": "<1 kalimat>", "action": "<1 kalimat, kata kerja aktif>"}\n'
+        '  ],\n'
+        '  "fertilizer_recommendation": {\n'
+        '    "ratio": "<format XX-XX-XX contoh: 15-15-15, HANYA angka dipisah dash>",\n'
+        '    "description": "<1 kalimat bahasa Indonesia, MAKSIMAL 100 karakter>"\n'
+        '  },\n'
+        '  "preventive_recommendation": "<1-2 kalimat bahasa Indonesia>",\n'
+        '  "ai_reasoning": "<penjelasan teknis MAKSIMAL 300 karakter>"\n'
+        "}"
     )
 
     llm_response = pipeline.generate_recommendation(system_prompt, user_prompt, context)
-    parsed = _safe_parse_json(llm_response, {})
+    parsed = _safe_parse_json(llm_response, {}, required_keys=[
+        "risk_level", "overall_health_score", "system_milestones",
+        "fertilizer_recommendation", "prediction_summary"
+    ])
 
     return {
         "crop_type": crop_type,
         "current_growth_stage": growth_stage,
         "days_since_planted": days_planted,
-        "risk_level": parsed.get("risk_level", "medium"),
+        "risk_level": _normalize_enum(
+            parsed.get("risk_level", ""), ["low", "medium", "high"], "medium"
+        ),
+        "overall_health_score": _safe_int(parsed.get("overall_health_score"), default=75),
+        "crop_health_score": _safe_int(parsed.get("crop_health_score"), default=75),
+        "days_to_harvest": _safe_int(parsed.get("days_to_harvest"), default=14, min_val=0, max_val=365),
+        "ph_status": _normalize_enum(
+            parsed.get("ph_status", ""), ["Optimum", "Deficient", "Excess"], "Optimum"
+        ),
+        "moisture_status": _normalize_enum(
+            parsed.get("moisture_status", ""), ["Optimum", "Deficient", "Excess"], "Optimum"
+        ),
+        "npk_status": _normalize_enum(
+            parsed.get("npk_status", ""), ["Optimum", "Deficient", "Excess"], "Optimum"
+        ),
+        "prediction_summary": str(parsed.get("prediction_summary", ""))[:120],
+        "system_milestones": _validate_milestones(parsed.get("system_milestones", [])),
         "monitoring_schedule": parsed.get("monitoring_schedule", []),
-        "preventive_recommendation": parsed.get("preventive_recommendation", ""),
-        "ai_reasoning": parsed.get("ai_reasoning", llm_response),
+        "fertilizer_recommendation": {
+            "ratio": str(parsed.get("fertilizer_recommendation", {}).get("ratio", "15-15-15")),
+            "description": str(parsed.get("fertilizer_recommendation", {}).get(
+                "description",
+                "Formula nutrisi seimbang dioptimalkan untuk fase pertumbuhan saat ini."
+            ))[:100]
+        },
+        "preventive_recommendation": str(parsed.get("preventive_recommendation", "")),
+        "ai_reasoning": str(parsed.get("ai_reasoning", llm_response))[:300],
     }
 
 
@@ -401,8 +502,9 @@ def harvest_service(
         f"NPK: N={nitrogen}, P={phosphorus}, K={potassium}\n"
         f"Suhu rata-rata: {temperature}°C\n"
         f"Kelembaban saat ini: {current_weather['humidity_pct']}%\n\n"
-        "Berikan prediksi panen dalam format JSON:\n"
+        "Berikan prediksi panen dalam format JSON bahasa Indonesia:\n"
         '{"estimated_harvest_window": {"earliest": "YYYY-MM-DD", "latest": "YYYY-MM-DD", "optimal": "YYYY-MM-DD"}, '
+        '"days_to_harvest": number, '
         '"yield_estimate": {"range_kg_per_ha": "X - Y", "confidence": "low|moderate|high", '
         '"limiting_factors": ["..."]}, '
         '"ai_reasoning": "..."}'
@@ -415,6 +517,7 @@ def harvest_service(
         "crop_type": crop_type,
         "planted_date": planted_date,
         "days_since_planted": days_planted,
+        "days_to_harvest": parsed.get("days_to_harvest", 14),
         "estimated_harvest_window": parsed.get("estimated_harvest_window", {}),
         "yield_estimate": parsed.get("yield_estimate", {}),
         "ai_reasoning": parsed.get("ai_reasoning", llm_response),

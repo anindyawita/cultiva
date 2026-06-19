@@ -108,19 +108,15 @@ class HarvestRequest(BaseModel):
 
 class CropRecommendationRequest(BaseModel):
     # Fitur lama (1)
-    nitrogen: float = Field(..., ge=0, le=500, alias="N")
-    phosphorus: float = Field(..., ge=0, le=500, alias="P")
-    potassium: float = Field(..., ge=0, le=500, alias="K")
+    nitrogen: float = Field(..., ge=0, le=500, alias="n")
+    phosphorus: float = Field(..., ge=0, le=500, alias="p")
+    potassium: float = Field(..., ge=0, le=500, alias="k")
     temperature: float = Field(..., examples=[28.0])
     # Fitur baru tambahan
     humidity: float = Field(..., ge=0, le=100)
     ph: float = Field(..., ge=0, le=14)        # pH tanah 0-14
-    soil_type: str = Field(..., examples=["Alluvial Soil, Loamy Soil"])               
-    season: str = Field(..., examples=["kharif", "rabi"])
-
-    # Fitur lama (2)
-    location: str = Field(..., examples=["Malang,ID"])
-    rainfall_mm: Optional[float] = Field(None, ge=0)
+    soil_type: str = Field(..., examples=["Alluvial Soil"])               
+    current_date = str = Field(..., examples=["2026-06-20"])
 
     class Config:
         populate_by_name = True

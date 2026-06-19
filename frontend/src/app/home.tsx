@@ -42,7 +42,7 @@ export default function HomeDashboard() {
       </div>
 
       {/* Main Tab Content */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" />
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, x: 10 }}
@@ -50,7 +50,7 @@ export default function HomeDashboard() {
           exit={{ opacity: 0, x: -10 }}
           transition={{ duration: 0.3 }}
           style={{ width: '100%' }}
-        >
+        />
           {renderTabContent()}
       {/* Persistent Bottom Nav */}
       <BottomNav />

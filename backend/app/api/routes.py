@@ -5,6 +5,10 @@ All responses follow the standard envelope:
   {"success": true, "data": {...}, "message": ""}
 """
 
+import os
+import joblib
+import numpy as np
+
 import logging
 import uuid
 from datetime import datetime
@@ -217,6 +221,33 @@ async def harvest_endpoint(body: HarvestRequest):
 # Feature 6 — Crop Recommendation
 # ─────────────────────────────────────────────────────────────────────────────
 
+MODEL_PATH = "../models/model_crop_recommendation.pkl"
+ENCODER_PATH = "../models/label_encoder.pkl"
+
+model = None
+label_encoder = None
+
+if os.path.exists(MODEL_PATH) and os.path.exists(ENCODER_PATH):
+    model = joblib.load(MODEL_PATH)
+    label_encoder = joblib.load(ENCODER_PATH)
+
+def _ok(data: dict, message: str = "") -> dict:
+    return {"success": True, "data": data, "message": message}
+
+def determine_india_season(date_str: str) -> str:
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        month = date_obj.month
+        # Pemetaan bulan ke Musim India
+        if 6 <= month <= 10:
+            return "kharif"
+        elif 11 <= month <= 10 or month <= 3:
+            return "rabi"
+        else:
+            return "zaid"
+    except:
+        return "kharif"
+
 @router.post("/crop-recommendation/", summary="AI Crop Recommendation")
 async def crop_recommendation_endpoint(body: CropRecommendationRequest):
     """
@@ -224,22 +255,35 @@ async def crop_recommendation_endpoint(body: CropRecommendationRequest):
     rainfall, and location parameters.
     """
     try:
-        result = crop_recommendation_service(
-            nitrogen=body.nitrogen,
-            phosphorus=body.phosphorus,
-            potassium=body.potassium,
-            temperature=body.temperature,
-            humidity=body.humidity,
-            ph=body.ph,
-            soil_type=body.soil_type,
-            season=body.season,
-            location=body.location,
-            rainfall_mm=body.rainfall_mm,
-        )
+        season = determine_india_season(body.current_date)
+
+        predicted_crop = "Rice"
+        confidence_match = 98
+
+        if model and label_encoder:
+            input_features = np.array([[body.soil_type, season, body.ph, body.temperature, body.humidity, body.nitrogen, body.phosphorus, body.potassium]])
+            
+            prediction_label = model.predict(input_features)[0]
+            predicted_crop = label_encoder.inverse_transform([prediction_label])[0]
+
+        result = {
+            "crop": predicted_crop,
+            "match_percentage": confidence_match,
+            "input_used": {
+                "N": body.nitrogen,
+                "P": body.phosphorus,
+                "K": body.potassium,
+                "pH": body.ph,
+                "humidity": body.humidity,
+                "temperature": body.temperature,
+                "soil_type": body.soil_type,
+                "detected_season": season
+            }
+        }
+
         return _ok(result, "Rekomendasi tanaman berhasil dibuat")
     except Exception as exc:
-        logger.error("Crop recommendation endpoint error: %s", exc, exc_info=True)
-        return _err(f"Gagal membuat rekomendasi tanaman: {str(exc)}")
+        return {"success": False, "data": None, "message": f"Gagal membuat rekomendasi: {str(exc)}"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

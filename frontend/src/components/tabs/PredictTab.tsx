@@ -51,7 +51,7 @@ export default function PredictTab() {
                       <span className="slider-label"><FlaskConical size={14}/> Nitrogen (N)</span>
                       <span className="slider-value text-green">{nitrogen} mg/kg</span>
                     </div>
-                    <input type="range" min="0" max="150" value={nitrogen} onChange={(e) => setNitrogen(Number(e.target.value))} className="custom-slider" />
+                    <input type="range" min="0" max="200" value={nitrogen} onChange={(e) => setNitrogen(Number(e.target.value))} className="custom-slider" />
                   </div>
 
                   <div className="slider-group">
@@ -67,7 +67,7 @@ export default function PredictTab() {
                       <span className="slider-label"><Zap size={14}/> Potassium (K)</span>
                       <span className="slider-value text-green">{potassium} mg/kg</span>
                     </div>
-                    <input type="range" min="0" max="100" value={potassium} onChange={(e) => setPotassium(Number(e.target.value))} className="custom-slider" />
+                    <input type="range" min="0" max="400" value={potassium} onChange={(e) => setPotassium(Number(e.target.value))} className="custom-slider" />
                   </div>
 
                   <div className="slider-group">

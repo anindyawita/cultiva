@@ -8,6 +8,7 @@ All responses follow the standard envelope:
 import os
 import joblib
 import numpy as np
+import pandas as pd
 
 import logging
 import uuid
@@ -221,15 +222,24 @@ async def harvest_endpoint(body: HarvestRequest):
 # Feature 6 — Crop Recommendation
 # ─────────────────────────────────────────────────────────────────────────────
 
-MODEL_PATH = "../models/model_crop_recommendation.pkl"
-ENCODER_PATH = "../models/label_encoder.pkl"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MODEL_PATH = os.path.join(BASE_DIR, "app", "models", "model_crop_recommendation.pkl")
+ENCODER_PATH = os.path.join(BASE_DIR, "app", "models", "label_encoder.pkl")
 
 model = None
 label_encoder = None
 
-if os.path.exists(MODEL_PATH) and os.path.exists(ENCODER_PATH):
-    model = joblib.load(MODEL_PATH)
-    label_encoder = joblib.load(ENCODER_PATH)
+try:
+    if os.path.exists(MODEL_PATH) and os.path.exists(ENCODER_PATH):
+        model = joblib.load(MODEL_PATH)
+        label_encoder = joblib.load(ENCODER_PATH)
+        print("======== ML MODEL & ENCODER SUCCESSFULLY LOADED ========")
+    else:
+        print(f"======== WARNING: Model/Encoder file not found! ========")
+        print(f"Checked MODEL_PATH: {MODEL_PATH}")
+        print(f"Checked ENCODER_PATH: {ENCODER_PATH}")
+except Exception as e:
+    print(f"======== ERROR LOADING MODEL: {str(e)} ========")
 
 def _ok(data: dict, message: str = "") -> dict:
     return {"success": True, "data": data, "message": message}
@@ -256,15 +266,21 @@ async def crop_recommendation_endpoint(body: CropRecommendationRequest):
     """
     try:
         season = determine_india_season(body.current_date)
-
-        predicted_crop = "Rice"
         confidence_match = 98
 
         if model and label_encoder:
-            input_features = np.array([[body.soil_type, season, body.ph, body.temperature, body.humidity, body.nitrogen, body.phosphorus, body.potassium]])
+            column_names = [
+                "soil_type", "season", "pH", "temperature", 
+                "humidity", "n", "p", "k"
+            ]
+            input_features = pd.DataFrame(
+                [["Clay Soil", "kharif", 6.7, 11.3, 65.0, 68.1, 41.9, 56.6]], 
+                columns=column_names)
             
             prediction_label = model.predict(input_features)[0]
             predicted_crop = label_encoder.inverse_transform([prediction_label])[0]
+
+            print(predicted_crop)
 
         result = {
             "crop": predicted_crop,

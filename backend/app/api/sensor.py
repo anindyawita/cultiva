@@ -15,7 +15,7 @@ BASE_SELANGOR_SENSOR_DATA = {
     "ph": 5.2,
     "nitrogen": 95,
     "phosphorus": 28,
-    "potassium": 85
+    "potassium": 85.0
 }
 
 BASE_SURABAYA_SENSOR_DATA = {
@@ -26,7 +26,18 @@ BASE_SURABAYA_SENSOR_DATA = {
     "ph": 6.6,
     "nitrogen": 120,
     "phosphorus": 55,
-    "potassium": 135
+    "potassium": 135.0
+}
+
+BASE_TESTING_SENSOR_DATA = {
+    "device_id": "esp32-soil-01",
+    "moisture": 65.0,
+    "temperature": 43.3,
+    "ec": 680,
+    "ph": 6.6,
+    "nitrogen": 69.7,
+    "phosphorus": 59.6,
+    "potassium": 51.5
 }
 
 class SoilData(BaseModel):
@@ -56,14 +67,14 @@ async def get_latest():
         return int(round(new_val)) if is_int else round(new_val, 1)
 
     dummy_record = {
-        "device_id": BASE_SELANGOR_SENSOR_DATA["device_id"],
-        "moisture": fluctuate(BASE_SELANGOR_SENSOR_DATA["moisture"], 0, 100),
-        "temperature": fluctuate(BASE_SELANGOR_SENSOR_DATA["temperature"], 10, 50),
-        "ec": fluctuate(BASE_SELANGOR_SENSOR_DATA["ec"], 100, 1000, is_int=True),
-        "ph": fluctuate(BASE_SELANGOR_SENSOR_DATA["ph"], 0, 14),
-        "nitrogen": fluctuate(BASE_SELANGOR_SENSOR_DATA["nitrogen"], 0, 150, is_int=True),
-        "phosphorus": fluctuate(BASE_SELANGOR_SENSOR_DATA["phosphorus"], 0, 100, is_int=True),
-        "potassium": fluctuate(BASE_SELANGOR_SENSOR_DATA["potassium"], 0, 100, is_int=True),
+        "device_id": BASE_TESTING_SENSOR_DATA["device_id"],
+        "moisture": fluctuate(BASE_TESTING_SENSOR_DATA["moisture"], 0, 100),
+        "temperature": fluctuate(BASE_TESTING_SENSOR_DATA["temperature"], 10, 50),
+        "ec": fluctuate(BASE_TESTING_SENSOR_DATA["ec"], 100, 1000, is_int=True),
+        "ph": fluctuate(BASE_TESTING_SENSOR_DATA["ph"], 0, 14),
+        "nitrogen": fluctuate(BASE_TESTING_SENSOR_DATA["nitrogen"], 0, 150, is_int=True),
+        "phosphorus": fluctuate(BASE_TESTING_SENSOR_DATA["phosphorus"], 0, 100, is_int=True),
+        "potassium": fluctuate(BASE_TESTING_SENSOR_DATA["potassium"], 0, 100, is_int=True),
         "timestamp": datetime.now().isoformat()
     }
     return dummy_record
